@@ -1,5 +1,8 @@
-import { DateParser } from '../../../introspector/dialects/postgres/date-parser';
 import { NumericParser } from '../../../introspector/dialects/postgres/numeric-parser';
+import type { DateParser } from '../../../introspector/dialects/shared/date-parser';
+import { DateParserKind } from '../../../introspector/dialects/shared/date-parser';
+import type { TimestampParser } from '../../../introspector/dialects/shared/timestamp-parser';
+import { TimestampParserKind } from '../../../introspector/dialects/shared/timestamp-parser';
 import { Adapter } from '../../adapter';
 import { ColumnTypeNode } from '../../ast/column-type-node';
 import { IdentifierNode } from '../../ast/identifier-node';
@@ -18,6 +21,7 @@ import {
 type PostgresAdapterOptions = {
   dateParser?: DateParser;
   numericParser?: NumericParser;
+  timestampParser?: TimestampParser<'timestamp' | 'timestamptz'>;
 };
 
 export class PostgresAdapter extends Adapter {
@@ -139,10 +143,26 @@ export class PostgresAdapter extends Adapter {
   constructor(options?: PostgresAdapterOptions) {
     super();
 
-    if (options?.dateParser === DateParser.STRING) {
-      this.scalars.date = new IdentifierNode('string');
-    } else {
-      this.scalars.date = new IdentifierNode('Timestamp');
+    if (typeof options?.dateParser === 'string') {
+      this.scalars.date = this.#getDateParserKindValue(options.dateParser);
+    } else if (options?.dateParser !== undefined) {
+      this.scalars.date = this.#getDateParserKindValue(options.dateParser.date);
+    }
+
+    if (typeof options?.timestampParser === 'string') {
+      this.scalars.timestamp = this.#getTimestampParserKindValue(
+        options.timestampParser,
+      );
+      this.scalars.timestamptz = this.#getTimestampParserKindValue(
+        options.timestampParser,
+      );
+    } else if (options?.timestampParser !== undefined) {
+      this.scalars.timestamp = this.#getTimestampParserKindValue(
+        options.timestampParser.timestamp,
+      );
+      this.scalars.timestamptz = this.#getTimestampParserKindValue(
+        options.timestampParser.timestamptz,
+      );
     }
 
     if (options?.numericParser === NumericParser.NUMBER) {
@@ -164,6 +184,28 @@ export class PostgresAdapter extends Adapter {
           new IdentifierNode('string'),
         ]),
       );
+    }
+  }
+
+  #getDateParserKindValue(
+    dateParserKind: DateParserKind | undefined,
+  ): IdentifierNode {
+    switch (dateParserKind) {
+      case DateParserKind.STRING:
+        return new IdentifierNode('string');
+      default:
+        return new IdentifierNode('Timestamp');
+    }
+  }
+
+  #getTimestampParserKindValue(
+    timestampParserKind: TimestampParserKind | undefined,
+  ): IdentifierNode {
+    switch (timestampParserKind) {
+      case TimestampParserKind.STRING:
+        return new IdentifierNode('string');
+      default:
+        return new IdentifierNode('Timestamp');
     }
   }
 }

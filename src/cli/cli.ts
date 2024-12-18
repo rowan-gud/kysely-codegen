@@ -8,13 +8,19 @@ import { LogLevel } from '../generator/logger/log-level';
 import { Logger } from '../generator/logger/logger';
 import type { Overrides } from '../generator/transformer/transform';
 import {
-  DateParser,
-  DEFAULT_DATE_PARSER,
-} from '../introspector/dialects/postgres/date-parser';
-import {
   DEFAULT_NUMERIC_PARSER,
   NumericParser,
 } from '../introspector/dialects/postgres/numeric-parser';
+import type { DateParser } from '../introspector/dialects/shared/date-parser';
+import {
+  DateParserKind,
+  DEFAULT_DATE_PARSER_KIND,
+} from '../introspector/dialects/shared/date-parser';
+import type { TimestampParser } from '../introspector/dialects/shared/timestamp-parser';
+import {
+  DEFAULT_TIMESTAMP_PARSER_KIND,
+  TimestampParserKind,
+} from '../introspector/dialects/shared/timestamp-parser';
 import {
   DEFAULT_LOG_LEVEL,
   DEFAULT_OUT_FILE,
@@ -25,7 +31,7 @@ import { FLAGS, serializeFlags } from './flags';
 
 export type CliOptions = {
   camelCase?: boolean;
-  dateParser?: DateParser;
+  dateParser?: DateParser<string>;
   dialectName?: DialectName;
   domains?: boolean;
   envFile?: string;
@@ -41,6 +47,7 @@ export type CliOptions = {
   runtimeEnumsStyle?: RuntimeEnumsStyle;
   schemas?: string[];
   singular?: boolean;
+  timestampParser?: TimestampParser<string>;
   typeOnlyImports?: boolean;
   url: string;
   verify?: boolean;
@@ -85,10 +92,11 @@ export class Cli {
     }
 
     const dialectManager = new DialectManager({
-      dateParser: options.dateParser ?? DEFAULT_DATE_PARSER,
+      dateParser: options.dateParser ?? DEFAULT_DATE_PARSER_KIND,
       domains: !!options.domains,
       numericParser: options.numericParser ?? DEFAULT_NUMERIC_PARSER,
       partitions: !!options.partitions,
+      timestampParser: options.timestampParser ?? DEFAULT_TIMESTAMP_PARSER_KIND,
     });
     const dialect = dialectManager.getDialect(
       options.dialectName ?? inferredDialectName,
@@ -126,13 +134,52 @@ export class Cli {
   }
 
   #parseDateParser(input: any) {
+    try {
+      const d = JSON.parse(input);
+
+      const result: DateParser<string> = {};
+
+      for (const key of Object.keys(d)) {
+        result[key] = this.#parseDateParserKind(d[key]);
+      }
+    } catch {
+      return this.#parseDateParserKind(input);
+    }
+  }
+
+  #parseDateParserKind(input: any): DateParserKind {
     switch (input) {
       case 'string':
-        return DateParser.STRING;
+        return DateParserKind.STRING;
       case 'timestamp':
-        return DateParser.TIMESTAMP;
+        return DateParserKind.TIMESTAMP;
       default:
-        return DEFAULT_DATE_PARSER;
+        return DEFAULT_DATE_PARSER_KIND;
+    }
+  }
+
+  #parseTimestampParser(input: any) {
+    try {
+      const d = JSON.parse(input);
+
+      const result: TimestampParser<string> = {};
+
+      for (const key of Object.keys(d)) {
+        result[key] = this.#parseTimestampParserKind(d[key]);
+      }
+    } catch {
+      return this.#parseTimestampParserKind(input);
+    }
+  }
+
+  #parseTimestampParserKind(input: any) {
+    switch (input) {
+      case 'string':
+        return TimestampParserKind.STRING;
+      case 'timestamp':
+        return TimestampParserKind.TIMESTAMP;
+      default:
+        return DEFAULT_TIMESTAMP_PARSER_KIND;
     }
   }
 
@@ -221,6 +268,9 @@ export class Cli {
     );
     const schemas = this.#parseStringArray(argv.schema);
     const singular = this.#parseBoolean(argv.singular);
+    const timestampParser = this.#parseTimestampParser(
+      argv['timestamp-parser'],
+    );
     const typeOnlyImports = this.#parseBoolean(
       argv['type-only-imports'] ?? true,
     );
@@ -281,6 +331,7 @@ export class Cli {
       runtimeEnumsStyle,
       schemas,
       singular,
+      timestampParser,
       typeOnlyImports,
       url,
       verify,

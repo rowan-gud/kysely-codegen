@@ -1,7 +1,15 @@
 import { PostgresDialect as KyselyPostgresDialect } from 'kysely';
 import type { CreateKyselyDialectOptions } from '../../dialect';
 import { IntrospectorDialect } from '../../dialect';
-import { DateParser, DEFAULT_DATE_PARSER } from './date-parser';
+import type { DateParser } from '../shared/date-parser';
+import {
+  DateParserKind,
+  DEFAULT_DATE_PARSER_KIND,
+} from '../shared/date-parser';
+import {
+  DEFAULT_TIMESTAMP_PARSER_KIND,
+  TimestampParser,
+} from '../shared/timestamp-parser';
 import { DEFAULT_NUMERIC_PARSER, NumericParser } from './numeric-parser';
 import { PostgresIntrospector } from './postgres-introspector';
 
@@ -11,6 +19,7 @@ type PostgresDialectOptions = {
   domains?: boolean;
   numericParser?: NumericParser;
   partitions?: boolean;
+  timestampParser?: TimestampParser<'timestamp' | 'timestamptz'>;
 };
 
 export class PostgresIntrospectorDialect extends IntrospectorDialect {
@@ -26,18 +35,34 @@ export class PostgresIntrospectorDialect extends IntrospectorDialect {
       partitions: options?.partitions,
     });
     this.options = {
-      dateParser: options?.dateParser ?? DEFAULT_DATE_PARSER,
+      dateParser: options?.dateParser ?? DEFAULT_DATE_PARSER_KIND,
       defaultSchemas: options?.defaultSchemas,
       domains: options?.domains ?? true,
       numericParser: options?.numericParser ?? DEFAULT_NUMERIC_PARSER,
+      timestampParser:
+        options?.timestampParser ?? DEFAULT_TIMESTAMP_PARSER_KIND,
     };
   }
 
   async createKyselyDialect(options: CreateKyselyDialectOptions) {
     const { default: pg } = await import('pg');
 
-    if (this.options.dateParser === DateParser.STRING) {
-      pg.types.setTypeParser(1082, (date) => date);
+    if (typeof this.options.dateParser === 'string') {
+      const [setDateParser, dateParser] = this.#parseDateParserKind(
+        this.options.dateParser,
+      );
+
+      if (setDateParser) {
+        pg.types.setTypeParser(1082, dateParser);
+      }
+    } else if (this.options.dateParser !== undefined) {
+      const [setDateParser, dateParser] = this.#parseDateParserKind(
+        this.options.dateParser.date,
+      );
+
+      if (setDateParser) {
+        pg.types.setTypeParser(1082, dateParser);
+      }
     }
 
     if (this.options.numericParser === NumericParser.NUMBER) {
@@ -58,5 +83,15 @@ export class PostgresIntrospectorDialect extends IntrospectorDialect {
         ssl: options.ssl ? { rejectUnauthorized: false } : false,
       }),
     });
+  }
+
+  #parseDateParserKind(
+    dateParserKind: DateParserKind | undefined,
+  ): [set: boolean, parser: (value: string) => unknown] {
+    if (dateParserKind === DateParserKind.STRING) {
+      return [true, (date) => date];
+    }
+
+    return [false, () => {}];
   }
 }

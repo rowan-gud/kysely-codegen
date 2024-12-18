@@ -1,3 +1,8 @@
+import { DateParserKind, type DateParser } from '../../../introspector';
+import {
+  TimestampParserKind,
+  type TimestampParser,
+} from '../../../introspector/dialects/shared/timestamp-parser';
 import { Adapter } from '../../adapter';
 import { ArrayExpressionNode } from '../../ast/array-expression-node';
 import { ColumnTypeNode } from '../../ast/column-type-node';
@@ -11,6 +16,11 @@ import {
   JSON_PRIMITIVE_DEFINITION,
   JSON_VALUE_DEFINITION,
 } from '../../transformer/definitions';
+
+type MysqlAdapterOptions = {
+  dateParser?: DateParser<'date' | 'datetime'>;
+  timestampParser?: TimestampParser;
+};
 
 export class MysqlAdapter extends Adapter {
   override readonly definitions = {
@@ -82,4 +92,50 @@ export class MysqlAdapter extends Adapter {
     varchar: new IdentifierNode('string'),
     year: new IdentifierNode('number'),
   };
+
+  constructor(options?: MysqlAdapterOptions) {
+    super();
+
+    if (typeof options?.dateParser === 'string') {
+      this.scalars.date = this.#getDateParserKindValue(options.dateParser);
+      this.scalars.datetime = this.#getDateParserKindValue(options.dateParser);
+    } else if (options?.dateParser !== undefined) {
+      this.scalars.date = this.#getDateParserKindValue(options.dateParser.date);
+      this.scalars.datetime = this.#getDateParserKindValue(
+        options.dateParser.datetime,
+      );
+    }
+
+    if (typeof options?.timestampParser === 'string') {
+      this.scalars.timestamp = this.#getTimestampParserKindValue(
+        options.timestampParser,
+      );
+    } else if (options?.timestampParser !== undefined) {
+      this.scalars.timestamp = this.#getTimestampParserKindValue(
+        options.timestampParser.timestamp,
+      );
+    }
+  }
+
+  #getDateParserKindValue(
+    dateParserKind: DateParserKind | undefined,
+  ): IdentifierNode {
+    switch (dateParserKind) {
+      case DateParserKind.STRING:
+        return new IdentifierNode('string');
+      default:
+        return new IdentifierNode('Date');
+    }
+  }
+
+  #getTimestampParserKindValue(
+    timestampParserKind: TimestampParserKind | undefined,
+  ): IdentifierNode {
+    switch (timestampParserKind) {
+      case TimestampParserKind.STRING:
+        return new IdentifierNode('string');
+      default:
+        return new IdentifierNode('Date');
+    }
+  }
 }

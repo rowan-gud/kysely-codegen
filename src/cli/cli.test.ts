@@ -4,11 +4,8 @@ import { join } from 'path';
 import { describe, it } from 'vitest';
 import packageJson from '../../package.json';
 import { LogLevel } from '../generator/logger/log-level';
-import {
-  DateParser,
-  DEFAULT_DATE_PARSER,
-} from '../introspector/dialects/postgres/date-parser';
 import { DEFAULT_NUMERIC_PARSER } from '../introspector/dialects/postgres/numeric-parser';
+import { DEFAULT_DATE_PARSER_KIND } from '../introspector/dialects/shared/date-parser';
 import type { CliOptions } from './cli';
 import { Cli } from './cli';
 import { DEFAULT_LOG_LEVEL, DEFAULT_OUT_FILE, DEFAULT_URL } from './constants';
@@ -18,7 +15,7 @@ describe(Cli.name, () => {
 
   const DEFAULT_CLI_OPTIONS: CliOptions = {
     camelCase: false,
-    dateParser: DEFAULT_DATE_PARSER,
+    dateParser: DEFAULT_DATE_PARSER_KIND,
     dialectName: undefined,
     domains: false,
     envFile: undefined,

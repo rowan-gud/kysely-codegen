@@ -7,8 +7,9 @@ import { migrate } from '../introspector/introspector.fixtures';
 import type { IntrospectorDialect } from './dialect';
 import { LibsqlIntrospectorDialect } from './dialects/libsql/libsql-dialect';
 import { MysqlIntrospectorDialect } from './dialects/mysql/mysql-dialect';
-import { DateParser } from './dialects/postgres/date-parser';
 import { PostgresIntrospectorDialect } from './dialects/postgres/postgres-dialect';
+import { DateParserKind } from './dialects/shared/date-parser';
+import { TimestampParserKind } from './dialects/shared/timestamp-parser';
 import { SqliteIntrospectorDialect } from './dialects/sqlite/sqlite-dialect';
 import { EnumCollection } from './enum-collection';
 import { Introspector } from './introspector';
@@ -33,8 +34,9 @@ const TESTS: Test[] = [
   {
     connectionString: 'postgres://user:password@localhost:5433/database',
     dialect: new PostgresIntrospectorDialect({
-      dateParser: DateParser.STRING,
+      dateParser: DateParserKind.STRING,
       numericParser: NumericParser.NUMBER_OR_STRING,
+      timestampParser: TimestampParserKind.STRING,
     }),
     inputValues: {
       date: '2024-10-14',

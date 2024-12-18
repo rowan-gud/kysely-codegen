@@ -1,7 +1,7 @@
 import { deepStrictEqual } from 'assert';
 import { describe, it } from 'vitest';
-import { DateParser } from '../../introspector/dialects/postgres/date-parser';
 import { NumericParser } from '../../introspector/dialects/postgres/numeric-parser';
+import { DateParser } from '../../introspector/dialects/shared/date-parser';
 import { EnumCollection } from '../../introspector/enum-collection';
 import { ColumnMetadata } from '../../introspector/metadata/column-metadata';
 import { DatabaseMetadata } from '../../introspector/metadata/database-metadata';
